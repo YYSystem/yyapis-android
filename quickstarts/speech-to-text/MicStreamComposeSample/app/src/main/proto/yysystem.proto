@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package yysystem;
+
+option cc_enable_arenas = true;
+option java_multiple_files = true;
+
+service YYSpeech {
+  rpc RecognizeStream(stream StreamRequest) returns (stream StreamResponse) {};
+  rpc Recognize(Request) returns (Response) {};
+}
+
+message Status {
+  int32 code = 1;
+  string message = 2;
+  string details = 3;
+}
+
+message Config {
+  optional string encoding = 1;
+  optional int32 sample_rate_hertz = 2;
+  optional int32 language_code = 3;
+  optional bool enable_word = 4;
+  optional int32 model = 5;
+}
+
+message Audio {
+  string content = 1;
+}
+
+message Request {
+  Config config = 1;
+  Audio audio = 2;
+}
+
+message WordInfo {
+  double start_time = 1;
+  double end_time = 2;
+  string word = 3;
+  string reading = 4;
+  string part_of_speech = 5;
+  string pronunciation = 6;
+}
+
+message Result {
+  string transcript = 1;
+  repeated WordInfo words = 2;
+}
+
+message Response {
+  repeated Result results = 1;
+}
+
+message StreamingConfig {
+  optional string encoding = 1;
+  optional int32 sample_rate_hertz = 2;
+  optional int32 language_code = 3;
+  optional bool enable_word = 4;
+  optional int32 model = 5;
+  optional bool enable_interim_results = 6;
+  repeated string translateTo = 7;
+}
+
+message StreamRequest {
+  bytes audiobytes = 1;
+  StreamingConfig streaming_config = 2;
+}
+
+message StreamResult {
+  bool is_final = 1;
+  string transcript = 2;
+  repeated WordInfo words = 3;
+  repeated string translations = 4;
+}
+
+message StreamResponse {
+  Status error = 1;
+  StreamResult result = 2;
+}
