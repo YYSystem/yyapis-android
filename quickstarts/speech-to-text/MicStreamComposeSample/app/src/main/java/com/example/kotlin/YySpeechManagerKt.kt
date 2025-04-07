@@ -55,7 +55,7 @@ class YySpeechManagerKt {
             CoroutineScope(Dispatchers.IO).launch {
                 delay(5000)
                 val streamingConfig = StreamingConfig.newBuilder().setEnableInterimResults(false)
-                    .setEnableAutoDetectLanguage(false).addAutoDetectLanguageCodes(4).addAllTranslateTo(listOf()).build()
+                    .addAutoDetectLanguageCodes(4).addAllTranslateTo(listOf()).build()
                 Log.i(javaClass.simpleName, "send StreamingConfig request")
                 call?.onNext(
                     StreamRequest.newBuilder().setStreamingConfig(streamingConfig).build()

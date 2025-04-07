@@ -80,6 +80,7 @@ MicStreamComposeSample/app/src/main/proto/yysystem.proto
 ```
 
 Android Studio で MicStreamComposeSample プロジェクトを起動します。VCS のエラーが出る場合は、File \> Settings \> Version Control Directory Mappings からエラーのでているディレクトリを削除してください。Protocol Buffers のプラグインが提案されたときは、Android Studio の指示に従ってプラグインを入れてください。
+手動でプラグインを入れる場合は、Settings -> Plugins の検索欄に「Protocol Buffers」を入力し、Installをクリックしてください。
 
 ## 実行
 
@@ -92,3 +93,4 @@ Android Studio で MicStreamComposeSample プロジェクトを起動します�
   ‘app’）をクリックして、アプリケーションを実行します。
 
 サンプルアプリが起動したら、画面下部の開始ボタンをタップして音声認識を開始してください。マイクアクセスの許可を求められた場合、許可した後、再度開始ボタンをタップしてください。停止ボタンがタップされるまで、発話している音声がリアルタイムに文字起こしされます。停止ボタンをタップすると音声認識を停止します。
+
