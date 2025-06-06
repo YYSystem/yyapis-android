@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.protobuf)
+    alias(libs.plugins.secrets.gradle.plugin)
 }
 
 protobuf {
@@ -23,7 +24,9 @@ protobuf {
                 create("grpc") {
                     option("lite")
                 }
-                create("grpckt")
+                create("grpckt") {
+                    option("lite")
+                }
             }
             it.builtins {
                 create("kotlin") {
@@ -70,6 +73,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -83,13 +87,10 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-//    implementation(libs.grpc.protobuf)
     implementation(libs.grpc.protobuf.lite)
     implementation(libs.grpc.stub)
     implementation(libs.grpc.kotlin.stub)
-//    implementation(libs.protobuf.java)
     implementation(libs.protobuf.javalite)
-//    implementation(libs.protobuf.kotlin)
     implementation(libs.protobuf.kotlin.lite)
     implementation(libs.grpc.okhttp)
     testImplementation(libs.junit)
