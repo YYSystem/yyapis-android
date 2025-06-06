@@ -1,4 +1,4 @@
-# yyapis-ios
+# yyapis-android
 
 このプロジェクトは Android で YYAPIs のサービスを呼び出すためのドキュメントが含まれています。
 
@@ -10,4 +10,4 @@
 
 | サンプルアプリ                                                                      | 説明                                                                       |
 | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| [MicStreamUIKitSample](quickstarts/speech-to-text/MicStreamComposeSample/README.md) | Jetpack Compose でマイクストリーミング音声入力を音声認識するサンプルアプリ |
+| [STTMicStreamUIKitSample](quickstarts/speech-to-text/STTMicStreamComposeSample/README.md) | Jetpack Compose でマイクストリーミング音声入力を音声認識するサンプルアプリ |
