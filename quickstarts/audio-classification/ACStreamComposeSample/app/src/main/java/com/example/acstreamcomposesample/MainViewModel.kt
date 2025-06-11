@@ -92,7 +92,7 @@ class MainViewModel: ViewModel() {
                 }
                 recordingJob = viewModelScope.launch(Dispatchers.IO) {
                     while (audioRecorder.isRecording) {
-                        val bytesRead = audioRecorder.audioRecord?.read(data, 0, AppConfig.frameBufferSize)
+                        audioRecorder.audioRecord?.read(data, 0, AppConfig.frameBufferSize)
                         _requestStream.emit(
                             classifyStreamRequest {
                                 streamingConfig = streamingConfig {

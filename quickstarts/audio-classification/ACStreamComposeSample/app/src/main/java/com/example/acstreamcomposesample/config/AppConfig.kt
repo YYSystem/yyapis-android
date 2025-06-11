@@ -20,7 +20,7 @@ class AppConfig {
         const val sampleRate = 16000
 
         // 音声のエンコード
-        const val audioEncoding = "LINEAR16"
+//        const val audioEncoding = "LINEAR16"
 
         // オーディオソース
         const val audioSource = MediaRecorder.AudioSource.MIC
