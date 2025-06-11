@@ -1,7 +1,8 @@
-package com.example.sttmicstreamcomposesample
+package com.example.sttmicstreamcomposesample.util
 
 import android.util.Log
 import androidx.core.app.ActivityCompat
+import com.example.sttmicstreamcomposesample.MainActivity
 
 class PermissionManager(private val activity: MainActivity) {
     private val requestPermissionLauncher =

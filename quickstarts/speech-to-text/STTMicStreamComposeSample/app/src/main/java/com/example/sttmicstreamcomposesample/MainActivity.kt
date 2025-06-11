@@ -5,18 +5,25 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -28,16 +35,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import io.grpc.stub.StreamObserver
+import androidx.lifecycle.lifecycleScope
+import com.example.sttmicstreamcomposesample.util.PermissionManager
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
-    lateinit var yySpeechManager: YySpeechManager
     private lateinit var permissionManager: PermissionManager
     private var showPermissionDeniedDialog by mutableStateOf(false)
+    private val mainViewModel: MainViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        initYySpeechManager()
         permissionManager = PermissionManager(this)
         setContent {
             STTMicStreamComposeSampleTheme {
@@ -46,7 +54,8 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     MainScreen(
-                        onStart = { startRecording(it) }
+                        viewModel = mainViewModel,
+                        onStart = { start() }
                     )
                     if (showPermissionDeniedDialog) {
                         PermissionDeniedDialog(
@@ -57,22 +66,21 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    private fun initYySpeechManager() {
-        yySpeechManager = YySpeechManager()
-    }
-    private fun startRecording(onPermissionGranted: () -> Unit) {
-        Log.i(javaClass.simpleName, "Starting recording")
+    private fun start() {
         permissionManager.requestMicPermission(
             onGranted = {
-                Log.i(javaClass.simpleName, "Microphone permission granted")
-                onPermissionGranted()
+                Log.i(javaClass.simpleName, "マイクの権限が許可されました")
+                lifecycleScope.launch {
+                    try {
+                        mainViewModel.start(this@MainActivity)
+                    } catch (e: Exception) {
+                        Log.e(javaClass.simpleName, "Error starting audio classification: ${e.localizedMessage}")
+                    }
+                }
             },
             onDenied = {
-                Log.w(javaClass.simpleName, "Microphone permission denied")
-                runOnUiThread {
-                    Log.w(javaClass.simpleName, "Showing permission denied dialog")
-                    showPermissionDeniedDialog = true
-                }
+                Log.w(javaClass.simpleName, "マイクの権限が拒否されました")
+                showPermissionDeniedDialog = true
             }
         )
     }
@@ -100,45 +108,15 @@ fun PermissionDeniedDialog(
 }
 
 @Composable
-fun MainScreen(onStart: (() -> Unit) -> Unit) {
-    var transcriptText by remember { mutableStateOf("") }
-    var isButtonLocked by remember { mutableStateOf(false) }
-    var isStartEnabled by remember { mutableStateOf(true) }
-    var isStopEnabled by remember { mutableStateOf(false) }
-    val context = LocalContext.current
-    val activity = context as? MainActivity
-    val yySpeechCallback = object : StreamObserver<StreamResponse> {
-        override fun onNext(chunk: StreamResponse) {
-            // Handle the response from the server
-            val res = chunk.result
-            if (res.transcript.isNullOrEmpty()) {
-                Log.i(javaClass.simpleName, "Received empty transcript")
-                return
-            }
-            Log.i(javaClass.simpleName, "Received transcript: ${res.transcript}")
-            val transcript = if (res.isFinal) {
-                res.transcript
-            } else {
-                res.transcript + "..."
-            }
-            activity?.let { act ->
-                act.runOnUiThread {
-                    // Update UI with the received transcript
-                    transcriptText = transcript
-                    Log.i(javaClass.simpleName, "Updated transcript text: $transcriptText")
-                }
-            }
-        }
-
-        override fun onError(t: Throwable) {
-            Log.e(javaClass.simpleName, "Error in speech recognition: ${t.message}")
-        }
-
-        override fun onCompleted() {
-            Log.i(javaClass.simpleName, "Speech recognition completed")
+fun MainScreen(viewModel: MainViewModel, onStart: () -> Unit) {
+    val isRecording by viewModel.isRecording.collectAsState(false)
+    val isShuttingDown by viewModel.isShuttingDown.collectAsState(false)
+    val responseState = remember { mutableStateOf<StreamResponse?>(null) }
+    LaunchedEffect (Unit) {
+        viewModel.responseStream.collect { response ->
+            responseState.value = response
         }
     }
-
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
@@ -153,7 +131,7 @@ fun MainScreen(onStart: (() -> Unit) -> Unit) {
                 modifier = Modifier.padding(16.dp)
             )
             Text(
-                text = transcriptText,
+                text = responseState.value?.result?.transcript ?: "",
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(16.dp)
             )
@@ -162,75 +140,69 @@ fun MainScreen(onStart: (() -> Unit) -> Unit) {
                 modifier = Modifier.fillMaxSize(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(
+                LoadingButton(
                     onClick = {
                         Log.i(javaClass.simpleName, "Start button clicked")
-                        if (isButtonLocked) return@Button
-                        isButtonLocked = true
-                        onStart {
-                            activity?.let { act ->
-                                try {
-                                    (act as? MainActivity)?.yySpeechManager?.start(
-                                        act,
-                                        yySpeechCallback
-                                    )
-                                    isStartEnabled = false
-                                    isStopEnabled = true
-                                } catch (e: Exception) {
-                                    Log.e(
-                                        javaClass.simpleName,
-                                        "Error starting speech recognition: ${e.message}"
-                                    )
-                                } finally {
-                                    isButtonLocked = false
-                                }
-
+                        when {
+                            isRecording -> viewModel.stop()
+                            else -> {
+                                onStart()
                             }
                         }
                     },
-                    enabled = isStartEnabled,
+                    loading = isShuttingDown,
                     modifier = Modifier.padding(16.dp)
                 ) {
-                    Text(text = "開始")
-                }
-                Spacer(modifier = Modifier.weight(1f))
-                Button(
-                    onClick = {
-                        if (isButtonLocked) return@Button
-                        isButtonLocked = true
-                        activity?.let { act ->
-                            try {
-                                (act as? MainActivity)?.yySpeechManager?.stop()
-                                isStartEnabled = true
-                                isStopEnabled = false
-                            } catch (e: Exception) {
-                                Log.e(
-                                    javaClass.simpleName,
-                                    "Error stopping speech recognition: ${e.message}"
-                                )
-                            } finally {
-                                isButtonLocked = false
-                            }
-                        }
-                    },
-                    enabled = isStopEnabled,
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(text = "停止")
+                    Text(text = when {
+                        isRecording -> "停止"
+                        else -> "開始"
+                    })
                 }
             }
         }
     }
 }
 
+@Composable
+fun LoadingButton(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    loading: Boolean,
+    enabled: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled && !loading
+    ) {
+        Row (verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center){
+            when {
+                loading -> {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = LocalContentColor.current
+                    )
+                    Spacer(modifier = Modifier.padding(horizontal = 8.dp))
+                    content()
+                }
+                else -> {
+                    content()
+                }
+            }
+        }
+    }
+}
+
+
 @Preview(showBackground = true)
 @Composable
 fun MainScreenPreview() {
     STTMicStreamComposeSampleTheme {
         MainScreen(
-            onStart = { callback ->
-                callback()
-            }
+            viewModel = MainViewModel(),
+            onStart = { /* No-op for preview */ }
         )
     }
 }

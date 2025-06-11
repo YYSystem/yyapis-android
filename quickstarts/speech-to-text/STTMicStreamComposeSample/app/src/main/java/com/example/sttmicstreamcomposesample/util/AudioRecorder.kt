@@ -1,4 +1,4 @@
-package com.example.sttmicstreamcomposesample
+package com.example.sttmicstreamcomposesample.util
 
 import android.Manifest
 import android.app.Activity
